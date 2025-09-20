@@ -31,7 +31,7 @@ var newsAnalysisConfig = builder.Configuration.GetSection("NewsAnalysis").Get<Ne
 builder.Services.AddDbContext<TradeBotDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Регистрация сервисов
+// Service registration
 builder.Services.AddSingleton(binanceConfig);
 builder.Services.AddSingleton(tradingConfig);
 builder.Services.AddSingleton(newsAnalysisConfig);

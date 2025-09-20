@@ -153,7 +153,7 @@ public class BinanceTradingService : IBinanceTradingService
 
         _logger.LogInformation($"Позиция: Вход = {activePosition.EntryPrice}, Текущая = {currentPrice}, P&L = {pnl:F2} USDT ({profitPercent:P2})");
 
-        // Закрываем позицию только если есть прибыль выше минимального порога
+        // We close the position only if there is a profit above the minimum threshold.
         if (profitPercent >= _tradingConfig.MinProfitPercent)
         {
             _logger.LogInformation($"Закрытие позиции с прибылью {profitPercent:P2}");
@@ -173,14 +173,14 @@ public class BinanceTradingService : IBinanceTradingService
     {
         try
         {
-            // Размещаем рыночный ордер на продажу
+            // Place a market order to sell
             var sellOrder = await _orderManagement.PlaceMarketOrderAsync(_tradingConfig.Symbol, OrderSide.Sell, position.Quantity);
 
             if (sellOrder != null && sellOrder.Status == OrderStatus.Filled)
             {
                 _logger.LogInformation($"Позиция закрыта с прибылью: {sellOrder.OrderId}");
-                
-                // Закрываем позицию в системе
+
+                // Closing a position in the system
                 await _orderManagement.ClosePositionAsync(_tradingConfig.Symbol);
                 
                 var profit = (sellOrder.Price - position.EntryPrice) * position.Quantity;
@@ -199,13 +199,13 @@ public class BinanceTradingService : IBinanceTradingService
 
     private async Task ConsiderTradingOpportunityAsync(decimal currentPrice, decimal support, decimal resistance)
     {
-        // Рассчитываем уровни входа с запасом от экстремумов
+        // We calculate entry levels with a margin from extremes.
         var buyLevel = support * (1 + _tradingConfig.BuyDistanceFromSupport);
         var sellLevel = resistance * (1 - _tradingConfig.SellDistanceFromResistance);
 
         _logger.LogInformation($"Уровни входа: Покупка = {buyLevel}, Продажа = {sellLevel}");
 
-        // Проверяем возможность покупки около поддержки
+        // Checking the possibility of purchasing near support
         if (currentPrice <= buyLevel)
         {
             _logger.LogInformation($"Возможность покупки около уровня поддержки (цена: {currentPrice}, уровень: {buyLevel})");
@@ -221,7 +221,7 @@ public class BinanceTradingService : IBinanceTradingService
     {
         try
         {
-            // Проверяем баланс
+            // Checking your balance
             var balance = await _orderManagement.GetAccountBalanceAsync("USDT");
             if (balance < _tradingConfig.OrderSize)
             {
@@ -229,7 +229,7 @@ public class BinanceTradingService : IBinanceTradingService
                 return;
             }
 
-            // Рассчитываем количество для покупки
+            // Calculate the quantity to purchase
             var quantity = await _orderManagement.CalculateOrderQuantityAsync(_tradingConfig.Symbol, _tradingConfig.OrderSize);
             
             if (quantity <= 0)
@@ -240,14 +240,14 @@ public class BinanceTradingService : IBinanceTradingService
             
             _logger.LogInformation($"Размещение ордера на покупку: {quantity:F6} {_tradingConfig.Symbol} по цене {currentPrice}");
 
-            // Размещаем рыночный ордер на покупку
+            // Place a market order to buy
             var buyOrder = await _orderManagement.PlaceMarketOrderAsync(_tradingConfig.Symbol, OrderSide.Buy, quantity);
 
             if (buyOrder != null && buyOrder.Status == OrderStatus.Filled)
             {
                 _logger.LogInformation($"Ордер на покупку исполнен: {buyOrder.OrderId}");
 
-                // Создаем позицию БЕЗ стоп-лосса и тейк-профита
+                // Create a position WITHOUT stop loss and take profit
                 var position = await _orderManagement.CreatePositionAsync(
                     _tradingConfig.Symbol, 
                     OrderSide.Buy, 
